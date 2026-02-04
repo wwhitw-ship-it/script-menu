@@ -136,10 +136,9 @@
 
     <script>
         // ==========================================
-        // CONFIG: 請將這裡換成你部署後的 Apps Script 網址
+        // CONFIG: Apps Script 網址
         // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbyUX0mGciBasmG0CpADuFxCecBUAM0gYF4MtIsCTNu-99Us4SNPzh0LLAlAuQ2hrK4w/exec"; 
-        // 範例: https://script.google.com/macros/s/AKfycby.../exec
 
         let database = [];
         let selectedIds = new Set();
@@ -160,7 +159,7 @@
                 document.getElementById('welcome-banner').classList.add('mt-32');
             } else {
                 isAdminMode = true;
-                generateClientButtons();
+                generateClientButtons(); // 這裡現在可以正確呼叫了
                 renderCards();
             }
         });
@@ -181,6 +180,7 @@
             }
         }
 
+        // 自動生成客戶按鈕 (修復補回此函式)
         function generateClientButtons() {
             const btnContainer = document.getElementById('client-buttons');
             const clients = [...new Set(database.map(item => item.client).filter(c => c))];
@@ -353,6 +353,7 @@
             });
         }
 
+        // --- 互動功能 ---
         function toggleCard(id) {
             if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
             updateUI();
@@ -381,6 +382,7 @@
             renderCards();
         }
 
+        // 複製選題清單 (LINE)
         function copySelection() {
             if (selectedIds.size === 0) { showToast("⚠️ 請先勾選主題", "bg-red-500"); return; }
             const selectedItems = database.filter(item => selectedIds.has(item.id));
@@ -391,7 +393,9 @@
             copyToClipboard(text);
         }
 
+        // 複製貼文文案 (單則)
         function copyCaption(id) {
+            // 由於 database 是全域變數，直接找
             const item = database.find(i => i.id === id);
             if(item && item.caption) {
                 copyToClipboard(item.caption, "📋 文案已複製！可直接貼上");
