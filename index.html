@@ -13,40 +13,24 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 選中狀態 */
-        .card-selected {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-        }
-        .card-selected .check-icon {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
-            color: white;
-        }
+        .card-selected { border-color: #3b82f6; background-color: #eff6ff; }
+        .card-selected .check-icon { background-color: #3b82f6; border-color: #3b82f6; color: white; }
 
-        /* 標籤顏色 */
         .tag-认知 { background-color: #dbeafe; color: #1e40af; }
         .tag-考慮 { background-color: #fef3c7; color: #92400e; }
         .tag-轉換 { background-color: #fee2e2; color: #991b1b; }
 
         /* 進度狀態顏色 */
-        .status-wait { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
-        .status-script { background-color: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; } /* Indigo */
-        .status-edit { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } /* Orange */
-        .status-done { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; } /* Green */
+        .status-script { background-color: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .status-edit { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+        .status-done { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
         
-        /* Loading */
         .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
+            border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3b82f6;
+            width: 24px; height: 24px; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Tab 切換動畫 */
         .tab-active { border-bottom: 2px solid #3b82f6; color: #2563eb; font-weight: 700; }
         .tab-inactive { color: #6b7280; }
     </style>
@@ -72,13 +56,11 @@
                 </span>
             </div>
 
-            <!-- 客戶篩選 (Admin Only) -->
             <div class="flex items-center space-x-2 overflow-x-auto hide-scrollbar pb-2 mb-1" id="filter-container">
                 <span class="text-xs font-bold text-gray-400 whitespace-nowrap mr-1">客戶:</span>
                 <div id="client-buttons" class="flex space-x-2"></div>
             </div>
 
-            <!-- 頁籤切換 (Tabs) -->
             <div class="flex border-b border-gray-200 mt-1">
                 <button onclick="switchTab('select')" id="tab-select" class="flex-1 pb-2 text-center text-sm tab-active transition-colors">
                     我要選題 <span id="count-select" class="ml-1 bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
@@ -125,8 +107,9 @@
                     <span class="text-sm text-gray-600 ml-1">個</span>
                 </div>
             </div>
-            <button onclick="copySelection()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center">
-                <i class="fa-regular fa-paper-plane mr-2"></i> 傳送確認單
+            <!-- 修改為送出選題 -->
+            <button onclick="submitSelection()" id="submit-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center">
+                <i class="fa-regular fa-paper-plane mr-2"></i> 送出選題
             </button>
         </div>
     </div>
@@ -136,7 +119,7 @@
 
     <script>
         // ==========================================
-        // CONFIG: Apps Script 網址
+        // CONFIG: 請確保這裡是正確的 GAS 網址
         // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbyUX0mGciBasmG0CpADuFxCecBUAM0gYF4MtIsCTNu-99Us4SNPzh0LLAlAuQ2hrK4w/exec"; 
 
@@ -144,7 +127,7 @@
         let selectedIds = new Set();
         let currentClientFilter = 'all';
         let isAdminMode = true;
-        let currentTab = 'select'; // 'select' | 'progress'
+        let currentTab = 'select';
 
         document.addEventListener('DOMContentLoaded', async () => {
             await fetchData();
@@ -159,7 +142,7 @@
                 document.getElementById('welcome-banner').classList.add('mt-32');
             } else {
                 isAdminMode = true;
-                generateClientButtons(); // 這裡現在可以正確呼叫了
+                generateClientButtons();
                 renderCards();
             }
         });
@@ -170,6 +153,7 @@
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error('Network response');
                 database = await response.json();
+                console.log("Database loaded:", database); // 方便除錯
                 updateStatus(true);
             } catch (error) {
                 console.warn("使用演示資料模式", error);
@@ -180,25 +164,18 @@
             }
         }
 
-        // 自動生成客戶按鈕 (修復補回此函式)
         function generateClientButtons() {
             const btnContainer = document.getElementById('client-buttons');
             const clients = [...new Set(database.map(item => item.client).filter(c => c))];
-            
             let html = `<button onclick="filterClient('all')" id="btn-all" class="filter-btn active px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-800 text-white transition-colors">全部預覽</button>`;
-            
             clients.forEach(client => {
                 html += `<button onclick="filterClient('${client}')" id="btn-${client}" class="filter-btn px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">${client}</button>`;
             });
-            
             btnContainer.innerHTML = html;
         }
 
-        // 頁籤切換邏輯
         function switchTab(tabName) {
             currentTab = tabName;
-            
-            // UI 樣式更新
             const tabs = ['select', 'progress'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
@@ -210,8 +187,6 @@
                     btn.classList.add('tab-inactive', 'text-gray-500');
                 }
             });
-
-            // 底部按鈕顯示控制 (選題才需要底部按鈕)
             const actionBar = document.getElementById('action-bar');
             if (tabName === 'select') {
                 actionBar.classList.remove('hidden');
@@ -220,7 +195,6 @@
                 actionBar.classList.add('hidden');
                 document.body.classList.remove('pb-32');
             }
-
             renderCards();
         }
 
@@ -232,28 +206,28 @@
             
             container.innerHTML = '';
 
-            // 1. 先篩選客戶
             let clientData = database.filter(item => {
                 if (currentClientFilter === 'all') return true;
                 return item.client === currentClientFilter;
             });
 
-            // 2. 根據 Tab 篩選 (選題 vs 進度)
-            const selectData = clientData.filter(item => !item.status); // 狀態為空 = 待選
-            const progressData = clientData.filter(item => item.status); // 狀態有值 = 進度中
+            const selectData = clientData.filter(item => 
+                (!item.status || item.status === '未選擇') && item.userSelected !== '選到了'
+            );
+            
+            const progressData = clientData.filter(item => 
+                (item.status && item.status !== '未選擇') || item.userSelected === '選到了'
+            );
 
-            // 更新計數器
             document.getElementById('count-select').innerText = selectData.length;
             document.getElementById('count-progress').innerText = progressData.length;
 
             const filteredData = currentTab === 'select' ? selectData : progressData;
 
-            // UI 顯示控制
             if (currentClientFilter !== 'all') {
                 welcomeBanner.classList.remove('hidden');
                 document.getElementById('client-name-display').innerText = currentClientFilter;
-                if (isAdminMode) shareBtn.classList.remove('hidden');
-                else shareBtn.classList.add('hidden');
+                if (isAdminMode) shareBtn.classList.remove('hidden'); else shareBtn.classList.add('hidden');
             } else {
                 welcomeBanner.classList.add('hidden');
             }
@@ -265,63 +239,81 @@
                 emptyState.classList.add('hidden');
             }
 
-            // 產生卡片
             filteredData.forEach(item => {
                 const isSelected = selectedIds.has(item.id);
-                
-                // 狀態樣式
                 let statusBadge = '';
-                let statusClass = 'status-wait';
                 let actionButtons = '';
                 
                 if (currentTab === 'progress') {
-                    // --- 進度追蹤模式卡片 ---
-                    const status = item.status || '處理中';
+                    // 狀態顯示
+                    let status = item.status;
+                    if (!status && item.userSelected === '選到了') status = '等待安排';
                     
+                    let statusClass = 'bg-gray-100 text-gray-600 border-gray-200';
                     if(status.includes('腳本')) statusClass = 'status-script';
                     if(status.includes('剪輯') || status.includes('拍攝')) statusClass = 'status-edit';
                     if(status.includes('完成')) statusClass = 'status-done';
+                    if(status === '等待安排') statusClass = 'bg-gray-100 text-gray-500 border-dashed border-gray-300';
 
-                    statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold ${statusClass}">${status}</span>`;
+                    statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold border ${statusClass}">${status}</span>`;
 
-                    // 依據狀態顯示按鈕
-                    if (status.includes('完成') && item.caption) {
+                    // 1. 腳本大綱 (強制顯示，若無資料顯示提示)
+                    const outlineContent = item.outline ? item.outline : '<span class="text-gray-400 italic">（目前尚無大綱內容）</span>';
+                    actionButtons += `
+                        <div class="w-full mt-3 p-3 bg-indigo-50 rounded-lg text-sm text-gray-700 border border-indigo-100">
+                            <div class="font-bold text-xs text-indigo-500 mb-1"><i class="fa-solid fa-list-ul mr-1"></i> 腳本大綱：</div>
+                            <div class="whitespace-pre-wrap">${outlineContent}</div>
+                        </div>
+                    `;
+
+                    // 2. 完成檔案 (強制顯示，若無連結顯示不可點按鈕)
+                    if (item.videoUrl) {
                         actionButtons += `
-                            <button onclick="copyCaption('${item.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg flex items-center justify-center transition">
-                                <i class="fa-regular fa-copy mr-2"></i> 複製貼文文案
+                            <div class="w-full mt-2">
+                                <div class="font-bold text-xs text-gray-400 mb-1 mt-2">完成檔案：</div>
+                                <a href="${item.videoUrl}" target="_blank" class="block w-full bg-gray-800 hover:bg-black text-white text-sm font-medium py-2 px-3 rounded-lg text-center transition">
+                                    <i class="fa-solid fa-play mr-2"></i> 點擊觀看影片
+                                </a>
+                            </div>
+                        `;
+                    } else {
+                        actionButtons += `
+                            <div class="w-full mt-2">
+                                <div class="font-bold text-xs text-gray-400 mb-1 mt-2">完成檔案：</div>
+                                <button disabled class="block w-full bg-gray-100 text-gray-400 text-sm font-medium py-2 px-3 rounded-lg text-center cursor-not-allowed">
+                                    <i class="fa-solid fa-video-slash mr-2"></i> 尚無影片連結
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    // 3. 貼文文案 (強制顯示，若無資料顯示提示)
+                    const captionContent = item.caption ? item.caption : '<span class="text-gray-400 italic">（目前尚無文案）</span>';
+                    actionButtons += `
+                        <div class="w-full mt-3 mb-2 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-200 relative group">
+                            <div class="font-bold text-xs text-gray-400 mb-1">貼文文案：</div>
+                            <div class="whitespace-pre-wrap select-all">${captionContent}</div>
+                        </div>
+                    `;
+                    
+                    if (item.caption) {
+                        actionButtons += `
+                            <button onclick="copyCaption('${item.id}')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm font-medium py-2 px-3 rounded-lg flex items-center justify-center transition border border-blue-200">
+                                <i class="fa-regular fa-copy mr-2"></i> 複製文案
                             </button>
                         `;
                     }
-                    
-                    if (item.videoUrl) {
-                        actionButtons += `
-                            <a href="${item.videoUrl}" target="_blank" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm font-medium py-2 px-3 rounded-lg flex items-center justify-center transition border border-blue-200">
-                                <i class="fa-solid fa-play mr-2"></i> 觀看影片
-                            </a>
-                        `;
-                    } else if (item.outline) {
-                         // 簡單的展開大綱功能
-                         actionButtons += `
-                             <div class="w-full mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 border border-gray-100">
-                                <span class="font-bold block mb-1">📝 腳本大綱：</span>
-                                ${item.outline.substring(0, 50)}...
-                            </div>
-                         `;
-                    }
                 }
 
-                // 標籤樣式
                 let phaseClass = 'bg-gray-100 text-gray-600';
                 if (item.phase === '認知') phaseClass = 'tag-认知';
                 if (item.phase === '考慮') phaseClass = 'tag-考慮';
                 if (item.phase === '轉換') phaseClass = 'tag-轉換';
 
-                // 決定卡片是否可點選 (只有選題模式可點)
                 const clickableClass = currentTab === 'select' ? 'cursor-pointer hover:shadow-md' : '';
                 const clickAction = currentTab === 'select' ? `onclick="toggleCard('${item.id}')"` : '';
                 const selectedClass = (currentTab === 'select' && isSelected) ? 'card-selected' : 'border-white';
                 
-                // 勾選框 (只在選題模式顯示)
                 const checkboxHTML = currentTab === 'select' ? `
                     <div class="absolute top-5 right-5 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center transition-colors check-icon ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white'}">
                         <i class="fa-solid fa-check text-xs ${isSelected ? '' : 'hidden'}"></i>
@@ -329,31 +321,29 @@
 
                 const cardHTML = `
                     <div ${clickAction} class="card-item group relative bg-white rounded-xl p-5 mb-4 border-2 border-transparent transition-all duration-200 shadow-sm ${clickableClass} ${selectedClass}">
-                        
                         ${checkboxHTML}
-
                         <div class="flex flex-wrap gap-2 mb-3 pr-16">
                             <span class="px-2 py-0.5 rounded text-xs font-bold ${phaseClass}">${item.phase}</span>
                             <span class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-500 border border-gray-200">#${item.type}</span>
                         </div>
-
                         <h3 class="text-lg font-bold text-gray-800 mb-2 leading-snug">
                             <span class="text-gray-400 text-sm font-normal mr-1 select-none">#${item.id}</span>
                             ${item.title}
                         </h3>
-                        <p class="text-sm text-gray-500 leading-relaxed border-l-2 border-gray-200 pl-3 mb-3">
-                            ${item.desc}
-                        </p>
+                        
+                        <!-- 重點說明區塊 -->
+                        <div class="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3 whitespace-pre-wrap">
+                            <span class="font-bold text-gray-400 block mb-1 text-xs"><i class="fa-regular fa-lightbulb mr-1"></i>重點說明：</span>
+                            ${item.desc || '<span class="text-gray-400 italic">（無說明）</span>'}
+                        </div>
 
-                        <!-- 進度模式的操作區 -->
-                        ${currentTab === 'progress' ? `<div class="mt-4 pt-3 border-t border-gray-100 flex gap-2 flex-wrap">${actionButtons}</div>` : ''}
+                        ${currentTab === 'progress' ? `<div class="mt-4 pt-3 border-t border-gray-100">${actionButtons}</div>` : ''}
                     </div>
                 `;
                 container.innerHTML += cardHTML;
             });
         }
 
-        // --- 互動功能 ---
         function toggleCard(id) {
             if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
             updateUI();
@@ -382,25 +372,48 @@
             renderCards();
         }
 
-        // 複製選題清單 (LINE)
-        function copySelection() {
+        async function submitSelection() {
             if (selectedIds.size === 0) { showToast("⚠️ 請先勾選主題", "bg-red-500"); return; }
-            const selectedItems = database.filter(item => selectedIds.has(item.id));
-            const clientName = currentClientFilter === 'all' ? selectedItems[0].client : currentClientFilter;
-            let text = `【${clientName || '客戶'} - 選題確認單】\n我選擇了以下主題：\n\n`;
-            selectedItems.forEach(item => { text += `✅ [${item.phase}] ${item.title}\n   (${item.id})\n\n`; });
-            text += `以上 ${selectedItems.length} 個主題，請協助安排腳本。`;
-            copyToClipboard(text);
+            
+            const btn = document.getElementById('submit-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> 處理中...`;
+            btn.disabled = true;
+
+            try {
+                const payload = { ids: Array.from(selectedIds) };
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+
+                showToast("✅ 選題成功！後台已更新", "bg-green-600");
+                
+                database.forEach(item => {
+                    if (selectedIds.has(item.id)) {
+                        item.userSelected = '選到了';
+                    }
+                });
+                
+                selectedIds.clear();
+                updateUI();
+                setTimeout(() => { switchTab('progress'); }, 1500);
+
+            } catch (error) {
+                console.error(error);
+                showToast("❌ 連線錯誤，請稍後再試", "bg-red-500");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
-        // 複製貼文文案 (單則)
         function copyCaption(id) {
-            // 由於 database 是全域變數，直接找
             const item = database.find(i => i.id === id);
             if(item && item.caption) {
-                copyToClipboard(item.caption, "📋 文案已複製！可直接貼上");
-            } else {
-                showToast("⚠️ 尚無文案內容", "bg-yellow-500");
+                copyToClipboard(item.caption, "📋 文案已複製！");
             }
         }
 
@@ -410,7 +423,7 @@
             copyToClipboard(`${baseUrl}?client=${currentClientFilter}`, "🔗 專屬連結已複製！");
         }
 
-        function copyToClipboard(text, msg = "已複製！請貼到 LINE 回傳") {
+        function copyToClipboard(text, msg = "已複製！") {
             navigator.clipboard.writeText(text).then(() => {
                 showToast(`<i class="fa-solid fa-check-circle mr-2"></i> ${msg}`, "bg-gray-800");
             }).catch(err => alert('複製失敗'));
@@ -435,17 +448,10 @@
             }
         }
 
-        // 備用資料 (包含進度範例)
         function useFallbackData() {
             database = [
-                // 待選的
-                { id: "G001-01", client: "隱寓", phase: "認知", type: "破除迷思", title: "深蹲膝蓋痛？不是姿勢錯，是肌肉『罷工』了！", desc: "展示自測動作，點出股四頭肌萎縮是主因。", status: "" },
-                // 進行中的 (腳本中)
-                { id: "G001-02", client: "隱寓", phase: "考慮", type: "乾貨教學", title: "3種不傷膝蓋的腿部強化動作", desc: "強調調整力臂或支撐點。", status: "腳本撰寫中", outline: "1. 開場：膝蓋痛不敢動？\n2. 動作一：坐姿抬腿\n3. 動作二：靠牆蹲\n4. 結尾：找回大腿力量" },
-                // 已完成的 (有連結與文案)
-                { id: "G001-03", client: "隱寓", phase: "轉換", type: "導向購買", title: "別讓膝蓋痛限制生活，1對1評估", desc: "CTA：預約專項評估。", status: "已完成", videoUrl: "https://youtube.com", caption: "膝蓋痛不是老了，是你的大腿忘記怎麼用力了！\n\n很多人膝蓋痛就不敢動...\n#健身 #復健 #膝蓋痛" },
-                
-                { id: "H001-01", client: "其他客戶", phase: "認知", type: "作品展示", title: "不用漂也能擁有的霧感髮色？", desc: "展示三個成功案例。", status: "" }
+                { id: "Demo-1", client: "演示客戶", phase: "認知", type: "示範", title: "請檢查 GAS 部署權限", desc: "請確認 Google Apps Script 部署身分為『任何人』(Anyone)", status: "未選擇" },
+                { id: "Demo-2", client: "演示客戶", phase: "轉換", type: "示範", title: "範例：已完成影片", desc: "這是進度範例", status: "已完成", caption: "這是一段測試文案，你可以直接看到我！\n覺得不錯就按下面複製吧。", videoUrl: "#", outline: "1. 開場\n2. 重點\n3. 結尾" }
             ];
         }
     </script>
