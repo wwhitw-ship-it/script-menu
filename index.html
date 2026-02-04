@@ -332,9 +332,9 @@
                         </h3>
                         
                         <!-- 重點說明區塊 -->
-                        <div class="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3 whitespace-pre-wrap">
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3">
                             <span class="font-bold text-gray-400 block mb-1 text-xs"><i class="fa-regular fa-lightbulb mr-1"></i>重點說明：</span>
-                            ${item.desc || '<span class="text-gray-400 italic">（無說明）</span>'}
+                            <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${item.desc || '<span class="text-gray-400 italic">（無說明）</span>'}</div>
                         </div>
 
                         ${currentTab === 'progress' ? `<div class="mt-4 pt-3 border-t border-gray-100">${actionButtons}</div>` : ''}
