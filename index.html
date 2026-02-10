@@ -61,10 +61,11 @@
                     <i class="fa-solid fa-user-shield"></i> 管理員登入
                 </button>
 
-                <!-- 密碼輸入區 (預設隱藏) -->
+                <!-- 密碼輸入區 (已隱藏密碼提示) -->
                 <div id="admin-input-area" class="hidden animate-fade-in">
                     <div class="flex items-center gap-2">
-                        <input type="password" id="admin-pass" placeholder="輸入通行碼 (8888)" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                        <!-- 修正：placeholder 不再顯示密碼 -->
+                        <input type="password" id="admin-pass" placeholder="請輸入管理員通行碼" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
                         <button onclick="submitAdminLogin()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition">
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -207,7 +208,7 @@
             }
         }
 
-        // --- 新的登入 UI 邏輯 ---
+        // --- 登入 UI 邏輯 ---
         function showLoginInput() {
             document.getElementById('admin-login-btn').classList.add('hidden');
             document.getElementById('admin-input-area').classList.remove('hidden');
@@ -219,6 +220,7 @@
             const errorMsg = document.getElementById('login-error');
             const pass = input.value;
 
+            // 這裡檢查密碼 (目前預設 8888)
             if (pass === "8888") {
                 // 登入成功
                 errorMsg.classList.add('hidden');
@@ -238,7 +240,6 @@
             }
         }
         
-        // 支援按 Enter 鍵登入
         document.getElementById('admin-pass')?.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') submitAdminLogin();
         });
@@ -450,7 +451,6 @@
 
         function filterClient(clientName) {
             currentClientFilter = clientName;
-            // 更新下拉選單的顯示值 (如果是由代碼觸發的變更)
             if (isAdminMode) {
                 const select = document.getElementById('client-select');
                 if(select) select.value = clientName;
